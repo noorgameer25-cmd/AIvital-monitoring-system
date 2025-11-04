@@ -53,7 +53,7 @@ projecsoviet/
 │   └── ...
 ├── contexts/
 │   └── AuthContext.tsx
-├── HuBERT-ECG/
+├── ECG/
 │   ├── api.py
 │   ├── code/
 │   └── ...
@@ -72,7 +72,7 @@ projecsoviet/
 
 *   Node.js (v18 or later)
 *   npm
-*   Python (for the HuBERT-ECG model)
+*   Python (for the ECG model)
 *   Firebase project
 *   Google Cloud project with Gemini and Text-to-Speech APIs enabled
 *   Resend API key
