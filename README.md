@@ -171,9 +171,8 @@ This project leverages two powerful AI models for its analysis capabilities:
 
 ![WhatsApp Image 2025-11-04 at 09 52 59_101a60c3](https://github.com/user-attachments/assets/7f4737e5-ee23-479d-91ea-1cb646ae0f69)
 
-![System Architecture Diagram](placeholder_for_system_architecture_diagram.png)
 
-*(This diagram should show the overall architecture of the system, including the frontend, backend, Firebase, and the AI models.)*
+*(This diagram should show the overall hardware architecture of the system.)*
 
 ### Data Flow
 
