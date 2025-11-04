@@ -4,10 +4,6 @@
 
 This project provides a comprehensive solution for monitoring vital signs, analyzing ECG data, and generating detailed health reports using cutting-edge AI models. It's designed to be a powerful tool for remote patient monitoring and health analysis.
 
-## 🚀 Live Demo
-
-[Link to your live demo]
-
 ## ✨ Features
 
 *   **Real-time Vital Signs Monitoring**: Tracks Heart Rate, Blood Pressure, Blood Sugar, SpO2, and Temperature.
@@ -27,7 +23,6 @@ This project provides a comprehensive solution for monitoring vital signs, analy
 *   **Authentication**: Firebase Authentication
 *   **Database**: Firestore
 *   **AI Models**:
-    *   Google Gemini
     *   HuBERT-ECG
 *   **Email**: Resend API
 *   **Deployment**: (e.g., Vercel, Netlify, Heroku)
@@ -53,7 +48,7 @@ projecsoviet/
 │   └── ...
 ├── contexts/
 │   └── AuthContext.tsx
-├── HuBERT-ECG/
+├── ECG/
 │   ├── api.py
 │   ├── code/
 │   └── ...
@@ -72,7 +67,7 @@ projecsoviet/
 
 *   Node.js (v18 or later)
 *   npm
-*   Python (for the HuBERT-ECG model)
+*   Python (for the ECG model)
 *   Firebase project
 *   Google Cloud project with Gemini and Text-to-Speech APIs enabled
 *   Resend API key
@@ -126,18 +121,18 @@ projecsoviet/
     npm start
     ```
 
-### HuBERT-ECG Model Setup
+### ECG Model Setup
 
 1.  **Navigate to the `HuBERT-ECG` directory**:
     ```bash
-    cd projecsoviet/HuBERT-ECG
+    cd projecsoviet/HECG
     ```
 2.  **Create a Python virtual environment**:
     ```bash
     python -m venv hubert_ecg_env
     ```
 3.  **Activate the virtual environment**:
-    *   **Windows**: `hubert_ecg_env\Scripts\activate`
+    *   **Windows**: `ecg_env\Scripts\activate`
     *   **macOS/Linux**: `source hubert_ecg_env/bin/activate`
 4.  **Install the required Python packages**:
     ```bash
@@ -173,9 +168,10 @@ This project leverages two powerful AI models for its analysis capabilities:
 
 ### System Architecture
 
-![System Architecture Diagram](placeholder_for_system_architecture_diagram.png)
+![WhatsApp Image 2025-11-04 at 09 52 59_101a60c3](https://github.com/user-attachments/assets/7f4737e5-ee23-479d-91ea-1cb646ae0f69)
 
-*(This diagram should show the overall architecture of the system, including the frontend, backend, Firebase, and the AI models.)*
+
+*(This diagram should show the overall hardware architecture of the system.)*
 
 ### Data Flow
 
