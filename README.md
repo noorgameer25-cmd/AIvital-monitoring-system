@@ -4,10 +4,6 @@
 
 This project provides a comprehensive solution for monitoring vital signs, analyzing ECG data, and generating detailed health reports using cutting-edge AI models. It's designed to be a powerful tool for remote patient monitoring and health analysis.
 
-## 🚀 Live Demo
-
-[Link to your live demo]
-
 ## ✨ Features
 
 *   **Real-time Vital Signs Monitoring**: Tracks Heart Rate, Blood Pressure, Blood Sugar, SpO2, and Temperature.
