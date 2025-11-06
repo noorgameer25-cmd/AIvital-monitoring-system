@@ -97,3 +97,5 @@ $RECYCLE.BIN/
 *.gz
 *.rar
 *.7z
+
+/ECG/ecg_env
