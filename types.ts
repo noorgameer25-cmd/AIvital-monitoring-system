@@ -47,4 +47,5 @@ export interface VitalAnalysis {
   };
   potential_diagnosis: string;
   recommendations: string[];
+  hubert_ecg_analysis?: any;
 }

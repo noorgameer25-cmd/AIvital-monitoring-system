@@ -9,7 +9,6 @@ This project provides a comprehensive solution for monitoring vital signs, analy
 *   **Real-time Vital Signs Monitoring**: Tracks Heart Rate, Blood Pressure, Blood Sugar, SpO2, and Temperature.
 *   **Live ECG Waveform**: Displays live ECG readings from three different leads (I, II, III) with arrhythmia simulation.
 *   **AI-Powered Analysis**:
-    *   **Gemini**: Analyzes vital signs to provide a detailed health assessment, potential diagnosis, and recommendations.
     *   **HuBERT-ECG**: A specialized model for ECG analysis, providing clinical parameters and diagnosis.
 *   **Detailed Health Reports**: Generates comprehensive health reports that can be viewed, printed, and sent via email.
 *   **User Authentication**: Secure user authentication with Firebase.
@@ -64,7 +63,6 @@ projecsoviet/
    └── transport.go
 ├── services/
 │   ├── firebase.ts
-│   ├── geminiService.ts
 │   └── ttsService.ts
 ├── App.tsx
 ├── index.tsx
@@ -79,7 +77,7 @@ projecsoviet/
 *   npm
 *   Python (for the ECG model)
 *   Firebase project
-*   Google Cloud project with Gemini and Text-to-Speech APIs enabled
+*   Google Cloud project with Text-to-Speech API enabled
 *   Resend API key
 
 ### Frontend Setup
@@ -155,16 +153,7 @@ projecsoviet/
 
 ## 🧠 AI Model
 
-This project leverages two powerful AI models for its analysis capabilities:
-
-### Gemini
-
-*   **Purpose**: Analyzes the user's vital signs (Heart Rate, Blood Pressure, Blood Sugar, SpO2, Temperature) to provide a comprehensive health assessment.
-*   **Functionality**:
-    *   Generates an overall assessment of the user's health.
-    *   Provides a detailed analysis of each vital sign, including its status (normal, high, low) and an explanation.
-    *   Suggests a potential diagnosis based on the vital signs.
-    *   Offers actionable recommendations for improving health.
+This project leverages a powerful AI model for its analysis capabilities:
 
 ### ECG
 
