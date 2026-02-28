@@ -35,6 +35,11 @@ const MonitoringPage: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('READY');
   const [userEmail, setUserEmail] = useState<string>('');
 
+  // Hardware integration state
+  const [isSerialConnected, setIsSerialConnected] = useState(false);
+  const portRef = useRef<any>(null);
+  const readerRef = useRef<any>(null);
+
   // Hidden age override for testing (Ctrl+Shift+A to cycle through ages)
   const [hiddenAgeOverride, setHiddenAgeOverride] = useState<number | null>(null);
 
@@ -437,7 +442,10 @@ const MonitoringPage: React.FC = () => {
 
   useEffect(() => {
     if (appState === 'MONITORING') {
-      intervalRef.current = window.setInterval(updateVitals, 500);
+      // Only run the simulation interval if NO serial device is connected
+      if (!isSerialConnected) {
+        intervalRef.current = window.setInterval(updateVitals, 500);
+      }
       timeoutRef.current = window.setTimeout(stopMonitoring, MONITORING_DURATION_MS);
     }
 
@@ -445,7 +453,94 @@ const MonitoringPage: React.FC = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [appState, stopMonitoring, updateVitals]);
+  }, [appState, stopMonitoring, updateVitals, isSerialConnected]);
+
+  // Handle Serial Connection
+  const connectSerial = async () => {
+    try {
+      // @ts-ignore - Web Serial API is sometimes not fully typed in standard DOM libraries
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 }); // standard baud rate
+      portRef.current = port;
+      setIsSerialConnected(true);
+
+      const textDecoder = new TextDecoderStream();
+      const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+      const reader = textDecoder.readable.getReader();
+      readerRef.current = reader;
+
+      readLoop(reader);
+    } catch (e) {
+      console.error("Failed to connect to serial device:", e);
+      setIsSerialConnected(false);
+    }
+  };
+
+  const readLoop = async (reader: any) => {
+    let buffer = "";
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          reader.releaseLock();
+          break;
+        }
+        if (value) {
+          buffer += value;
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line.trim());
+
+              setVitals(prev => {
+                const updated = {
+                  ...prev,
+                  heartRate: data.hr ?? data.heartRate ?? prev.heartRate,
+                  bloodPressure: {
+                    systolic: data.systolic ?? data.bp?.[0] ?? prev.bloodPressure.systolic,
+                    diastolic: data.diastolic ?? data.bp?.[1] ?? prev.bloodPressure.diastolic
+                  },
+                  spo2: data.spo2 ?? data.oxygen ?? prev.spo2,
+                  temperature: data.temp ?? data.temperature ?? prev.temperature,
+                  bloodSugar: data.glucose ?? data.bloodSugar ?? prev.bloodSugar,
+                };
+                finalVitalsRef.current = updated;
+                return updated;
+              });
+
+              if (data.ecg !== undefined) updateEcgData(setEcgData1, data.ecg);
+              if (data.ecg2 !== undefined) updateEcgData(setEcgData2, data.ecg2);
+              if (data.ecg3 !== undefined) updateEcgData(setEcgData3, data.ecg3);
+            } catch (e) {
+              // Ignore invalid JSON lines from serial stream
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Serial read loop error:", e);
+      setIsSerialConnected(false);
+    }
+  };
+
+  const disconnectSerial = async () => {
+    try {
+      if (readerRef.current) {
+        await readerRef.current.cancel();
+      }
+      if (portRef.current) {
+        await portRef.current.close();
+      }
+    } catch (e) {
+      console.error("Error disconnecting serial:", e);
+    } finally {
+      setIsSerialConnected(false);
+      portRef.current = null;
+      readerRef.current = null;
+    }
+  };
 
 
   const handleStart = () => {
@@ -477,9 +572,22 @@ const MonitoringPage: React.FC = () => {
     switch (appState) {
       case 'READY':
         return (
-          <button onClick={handleStart} className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg shadow-md transition-colors">
-            Start Monitoring
-          </button>
+          <div className="flex gap-4">
+            {!isSerialConnected ? (
+              <button onClick={connectSerial} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition-colors flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                Connect USB Device
+              </button>
+            ) : (
+              <button onClick={disconnectSerial} className="px-6 py-2 bg-indigo-800 hover:bg-indigo-900 border border-indigo-500 text-indigo-200 font-semibold rounded-lg shadow-md transition-colors flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                Hardware Connected
+              </button>
+            )}
+            <button onClick={handleStart} className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg shadow-md transition-colors">
+              Start Monitoring
+            </button>
+          </div>
         );
       case 'MONITORING':
         return (
