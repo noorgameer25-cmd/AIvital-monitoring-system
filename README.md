@@ -151,6 +151,24 @@ projecsoviet/
     python api.py
     ```
 
+## 📡 Hardware Data Format
+
+To successfully monitor patient readings, your USB device must transmit data over the Serial port (9600 baud) in the following JSON line format:
+
+```json
+{
+  "hr": 75,
+  "bp": [120, 80],
+  "spo2": 98,
+  "temp": 98.6,
+  "glucose": 100,
+  "ecg": 50.5,
+  "ecg2": 52.1,
+  "ecg3": 49.8
+}
+```
+*Note: The frontend allows slight variations like `"heartRate"` instead of `"hr"`, `"systolic"/"diastolic"` instead of `"bp"`, and `"oxygen"` instead of `"spo2"`. Each reading should be sent sequentially followed by a newline (`\n`).*
+
 ## 🧠 AI Model
 
 This project leverages a powerful AI model for its analysis capabilities:
