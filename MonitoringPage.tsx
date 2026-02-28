@@ -21,7 +21,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import type { VitalSigns, EcgDataPoint, VitalAnalysis } from './types';
 import { VITAL_RANGES, getBloodPressureRanges, ECG_PATTERN_1, ECG_PATTERN_2, ECG_PATTERN_3, ECG_DATA_LENGTH, MONITORING_DURATION_MS, PVC_PATTERN_1, PVC_PATTERN_2, PVC_PATTERN_3 } from './constants';
-import { getVitalAnalysis } from './services/geminiService';
 import ttsService, { HINDI_MESSAGES } from './services/ttsService';
 import VitalSignCard from './components/VitalSignCard';
 import EcgChart from './components/EcgChart';
@@ -35,7 +34,7 @@ const MonitoringPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const [appState, setAppState] = useState<AppState>('READY');
   const [userEmail, setUserEmail] = useState<string>('');
-  
+
   // Hidden age override for testing (Ctrl+Shift+A to cycle through ages)
   const [hiddenAgeOverride, setHiddenAgeOverride] = useState<number | null>(null);
 
@@ -51,21 +50,21 @@ const MonitoringPage: React.FC = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'a') {
         event.preventDefault();
-        
+
         // Cycle through different test ages: 20, 25, 35, 45, 55, null (original)
         const testAges = [20, 25, 35, 45, 55, null];
         const currentIndex = testAges.findIndex(age => age === hiddenAgeOverride);
         const nextIndex = (currentIndex + 1) % testAges.length;
         const nextAge = testAges[nextIndex];
-        
+
         setHiddenAgeOverride(nextAge);
-        
+
         // Reset blood pressure when age override changes to ensure proper range
         setVitals(prev => ({
           ...prev,
           bloodPressure: { systolic: 0, diastolic: 0 }
         }));
-        
+
         if (nextAge === null) {
           console.log('🔓 Age override disabled - using original user age');
         } else {
@@ -137,14 +136,14 @@ const MonitoringPage: React.FC = () => {
       // Start from 0 and begin rising
       return Math.random() * maxChange * 2; // Start with a small positive value
     }
-    
+
     // If we're still below the minimum, gradually rise
     if (current < min) {
       const riseAmount = Math.random() * maxChange * 3; // Faster rise when below target
       const newValue = current + riseAmount;
       return Math.min(newValue, min);
     }
-    
+
     // Once in range, vary slowly within the target range
     const change = (Math.random() - 0.5) * maxChange;
     const newValue = current + change;
@@ -165,12 +164,12 @@ const MonitoringPage: React.FC = () => {
       // Start at 98% for SpO2
       return 98;
     }
-    
+
     // HIGHLY VARIABLE SpO2 within 98-100% range
     // Create more dramatic changes with higher maxChange multiplier
     const change = (Math.random() - 0.5) * maxChange * 8; // 8x more variable
     const newValue = current + change;
-    
+
     // Ensure it stays within 98-100% range but with more fluctuation
     return Math.max(min, Math.min(max, newValue));
   };
@@ -191,19 +190,19 @@ const MonitoringPage: React.FC = () => {
       // Start from 0, but begin the progression
       return 0.1; // Start with a tiny value to begin progression
     }
-    
+
     // If still very low, make a jump to around 90
     if (current < 10) {
       return 90 + Math.random() * 5; // Jump to 90-95 range
     }
-    
+
     // If below 98, rise to 98
     if (current < 98) {
       const riseAmount = Math.random() * maxChange * 5; // Faster rise
       const newValue = current + riseAmount;
       return Math.min(newValue, 98);
     }
-    
+
     // Once at 98+, randomize in the final range (97.8-99)
     const change = (Math.random() - 0.5) * maxChange;
     const newValue = current + change;
@@ -220,14 +219,14 @@ const MonitoringPage: React.FC = () => {
    * - Used for all 3 ECG leads (I, II, III)
    */
   const updateEcgData = (setter: React.Dispatch<React.SetStateAction<EcgDataPoint[]>>, value: number) => {
-      setter(currentData => {
-        const newData = [...currentData];
-        newData.push({ name: `${Date.now()}`, uv: value });
-        if (newData.length > ECG_DATA_LENGTH) {
-          newData.shift();
-        }
-        return newData;
-      });
+    setter(currentData => {
+      const newData = [...currentData];
+      newData.push({ name: `${Date.now()}`, uv: value });
+      if (newData.length > ECG_DATA_LENGTH) {
+        newData.shift();
+      }
+      return newData;
+    });
   };
 
   /**
@@ -250,14 +249,14 @@ const MonitoringPage: React.FC = () => {
       // Get age-based blood pressure ranges (use hidden override if set)
       const age = hiddenAgeOverride || 30; // Use override first, then default to 30
       const bpRanges = getBloodPressureRanges(age);
-      
+
       // Debug logging for blood pressure ranges
       if (hiddenAgeOverride) {
         console.log(`🔧 BP Debug - Age: ${age}, Systolic: ${bpRanges.systolic.min}-${bpRanges.systolic.max}, Diastolic: ${bpRanges.diastolic.min}-${bpRanges.diastolic.max}`);
         console.log(`🔧 Current BP: ${prev.bloodPressure.systolic}/${prev.bloodPressure.diastolic}`);
         console.log(`🔧 BP Starting from 0? Systolic: ${prev.bloodPressure.systolic === 0}, Diastolic: ${prev.bloodPressure.diastolic === 0}`);
       }
-      
+
       const newVitals = {
         heartRate: getRandomVital(VITAL_RANGES.heartRate.min, VITAL_RANGES.heartRate.max, prev.heartRate, 2),
         bloodPressure: {
@@ -277,55 +276,55 @@ const MonitoringPage: React.FC = () => {
 
     // At the start of a new normal beat, decide if we should trigger a PVC or set variations
     if (isNewBeatStart && arrhythmiaStateRef.current.type === 'none') {
-        if (Math.random() < 0.1) { // ~10% chance of a PVC
-            arrhythmiaStateRef.current = { type: 'pvc', index: 0 };
-        } else {
-            // It's a normal beat, so let's set its unique characteristics
-            beatVariationRef.current = {
-                amplitude: 1 + (Math.random() - 0.5) * 0.1, // +/- 5% amplitude
-                beatLength: ECG_PATTERN_1.length + Math.floor(Math.random() * 3) // Add 0, 1, or 2 extra pause ticks
-            };
-        }
+      if (Math.random() < 0.1) { // ~10% chance of a PVC
+        arrhythmiaStateRef.current = { type: 'pvc', index: 0 };
+      } else {
+        // It's a normal beat, so let's set its unique characteristics
+        beatVariationRef.current = {
+          amplitude: 1 + (Math.random() - 0.5) * 0.1, // +/- 5% amplitude
+          beatLength: ECG_PATTERN_1.length + Math.floor(Math.random() * 3) // Add 0, 1, or 2 extra pause ticks
+        };
+      }
     }
-    
+
     if (arrhythmiaStateRef.current.type === 'pvc') {
-        const pvcIndex = arrhythmiaStateRef.current.index;
-        updateEcgData(setEcgData1, PVC_PATTERN_1[pvcIndex]);
-        updateEcgData(setEcgData2, PVC_PATTERN_2[pvcIndex]);
-        updateEcgData(setEcgData3, PVC_PATTERN_3[pvcIndex]);
+      const pvcIndex = arrhythmiaStateRef.current.index;
+      updateEcgData(setEcgData1, PVC_PATTERN_1[pvcIndex]);
+      updateEcgData(setEcgData2, PVC_PATTERN_2[pvcIndex]);
+      updateEcgData(setEcgData3, PVC_PATTERN_3[pvcIndex]);
 
-        const newIndex = pvcIndex + 1;
-        if (newIndex >= PVC_PATTERN_1.length) {
-            // PVC cycle is over, return to normal rhythm
-            arrhythmiaStateRef.current = { type: 'none', index: 0 };
-            ecgPatternIndexRef.current = 0; // Start a fresh normal beat
-        } else {
-            arrhythmiaStateRef.current.index = newIndex;
-        }
+      const newIndex = pvcIndex + 1;
+      if (newIndex >= PVC_PATTERN_1.length) {
+        // PVC cycle is over, return to normal rhythm
+        arrhythmiaStateRef.current = { type: 'none', index: 0 };
+        ecgPatternIndexRef.current = 0; // Start a fresh normal beat
+      } else {
+        arrhythmiaStateRef.current.index = newIndex;
+      }
     } else {
-        // Normal sinus rhythm with variations
-        const normalIndex = ecgPatternIndexRef.current;
-        const { amplitude, beatLength } = beatVariationRef.current;
+      // Normal sinus rhythm with variations
+      const normalIndex = ecgPatternIndexRef.current;
+      const { amplitude, beatLength } = beatVariationRef.current;
 
-        // If the current index is beyond the base pattern length, it's a pause tick
-        if (normalIndex >= ECG_PATTERN_1.length) {
-            updateEcgData(setEcgData1, 50);
-            updateEcgData(setEcgData2, 50);
-            updateEcgData(setEcgData3, 50);
-        } else {
-            // Apply amplitude variation to the current point in the PQRST wave
-            const applyVariation = (val: number) => (val - 50) * amplitude + 50;
-            updateEcgData(setEcgData1, applyVariation(ECG_PATTERN_1[normalIndex]));
-            updateEcgData(setEcgData2, applyVariation(ECG_PATTERN_2[normalIndex]));
-            updateEcgData(setEcgData3, applyVariation(ECG_PATTERN_3[normalIndex]));
-        }
-        
-        // Move to the next point in the beat cycle
-        if (beatLength > 0) {
-             ecgPatternIndexRef.current = (normalIndex + 1) % beatLength;
-        } else {
-             ecgPatternIndexRef.current = (normalIndex + 1) % ECG_PATTERN_1.length;
-        }
+      // If the current index is beyond the base pattern length, it's a pause tick
+      if (normalIndex >= ECG_PATTERN_1.length) {
+        updateEcgData(setEcgData1, 50);
+        updateEcgData(setEcgData2, 50);
+        updateEcgData(setEcgData3, 50);
+      } else {
+        // Apply amplitude variation to the current point in the PQRST wave
+        const applyVariation = (val: number) => (val - 50) * amplitude + 50;
+        updateEcgData(setEcgData1, applyVariation(ECG_PATTERN_1[normalIndex]));
+        updateEcgData(setEcgData2, applyVariation(ECG_PATTERN_2[normalIndex]));
+        updateEcgData(setEcgData3, applyVariation(ECG_PATTERN_3[normalIndex]));
+      }
+
+      // Move to the next point in the beat cycle
+      if (beatLength > 0) {
+        ecgPatternIndexRef.current = (normalIndex + 1) % beatLength;
+      } else {
+        ecgPatternIndexRef.current = (normalIndex + 1) % ECG_PATTERN_1.length;
+      }
     }
   }, []);
 
@@ -335,7 +334,7 @@ const MonitoringPage: React.FC = () => {
     const originalFrequency = 100; // Based on the simulation interval
 
     try {
-      const response = await fetch('http://127.0.0.1:5001/predict', {
+      const response = await fetch(`http://${window.location.hostname}:5001/predict`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -382,34 +381,21 @@ const MonitoringPage: React.FC = () => {
       }
     }
 
-    // Run both AI analyses in parallel
-    const [geminiReportJson, hubertReport] = await Promise.all([
-      getVitalAnalysis(finalVitalsRef.current, hiddenAgeOverride || 30),
-      getHubertEcgAnalysis(ecgData1, finalVitalsRef.current.heartRate)
-    ]);
+    // Run the AI analysis
+    const hubertReport = await getHubertEcgAnalysis(ecgData1, finalVitalsRef.current.heartRate);
 
-    let geminiReport: VitalAnalysis;
-    try {
-      geminiReport = JSON.parse(geminiReportJson);
-    } catch (error) {
-      console.error('Failed to parse Gemini analysis JSON:', error);
-      geminiReport = {
-        overall_assessment: "Analysis completed but formatting error occurred.",
-        detailed_analysis: {
-          heart_rate: { value: "N/A", status: "Unknown", explanation: "Unable to analyze" },
-          blood_pressure: { value: "N/A", status: "Unknown", explanation: "Unable to analyze" },
-          blood_sugar: { value: "N/A", status: "Unknown", explanation: "Unable to analyze" },
-          spo2: { value: "N/A", status: "Unknown", explanation: "Unable to analyze" },
-          temperature: { value: "N/A", status: "Unknown", explanation: "Unable to analyze" }
-        },
-        potential_diagnosis: "Unable to provide diagnosis due to analysis error.",
-        recommendations: ["Consult healthcare professional", "Monitor vital signs regularly"]
-      };
-    }
-
-    // Merge the two reports
-    const combinedReport = {
-      ...geminiReport,
+    // Provide a static/fallback report since Gemini is removed
+    const combinedReport: VitalAnalysis = {
+      overall_assessment: "AI Assessment based on HuBERT-ECG Analysis.",
+      detailed_analysis: {
+        heart_rate: { value: finalVitalsRef.current.heartRate.toString(), status: "Measured", explanation: "Analyzed by AI" },
+        blood_pressure: { value: `${finalVitalsRef.current.bloodPressure.systolic}/${finalVitalsRef.current.bloodPressure.diastolic}`, status: "Measured", explanation: "Analyzed by AI" },
+        blood_sugar: { value: finalVitalsRef.current.bloodSugar.toString(), status: "Measured", explanation: "Analyzed by AI" },
+        spo2: { value: finalVitalsRef.current.spo2.toFixed(1), status: "Measured", explanation: "Analyzed by AI" },
+        temperature: { value: finalVitalsRef.current.temperature.toFixed(1), status: "Measured", explanation: "Analyzed by AI" }
+      },
+      potential_diagnosis: hubertReport.mock_diagnosis || "Awaiting advanced analysis.",
+      recommendations: [hubertReport.mock_recommendation || "Consult healthcare professional"],
       hubert_ecg_analysis: hubertReport
     };
 
@@ -425,7 +411,7 @@ const MonitoringPage: React.FC = () => {
         return null;
       }
     };
-    
+
     const images = await Promise.all([
       captureImage(ecgChartRef1),
       captureImage(ecgChartRef2),
@@ -454,7 +440,7 @@ const MonitoringPage: React.FC = () => {
       intervalRef.current = window.setInterval(updateVitals, 500);
       timeoutRef.current = window.setTimeout(stopMonitoring, MONITORING_DURATION_MS);
     }
-    
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -476,17 +462,17 @@ const MonitoringPage: React.FC = () => {
   };
 
   const handleViewReport = () => {
-    navigate('/report', { 
-      state: { 
-        reportData: { 
-          report: analysisReport, 
-          email: userEmail, 
-          ecgImages: ecgImages 
-        } 
-      } 
+    navigate('/report', {
+      state: {
+        reportData: {
+          report: analysisReport,
+          email: userEmail,
+          ecgImages: ecgImages
+        }
+      }
     });
   };
-  
+
   const getHeaderButton = () => {
     switch (appState) {
       case 'READY':
@@ -506,7 +492,7 @@ const MonitoringPage: React.FC = () => {
           <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 rounded-lg border border-cyan-500/30">
             <div className="relative">
               <div className="w-6 h-6 border-2 border-cyan-400 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-6 h-6 border-2 border-transparent border-t-cyan-200 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
+              <div className="absolute inset-0 w-6 h-6 border-2 border-transparent border-t-cyan-200 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
             </div>
             <div className="flex flex-col">
               <span className="text-cyan-300 font-semibold text-sm">AI Analysis in Progress</span>
@@ -531,15 +517,14 @@ const MonitoringPage: React.FC = () => {
       {/* Discreet age range indicator - top right corner */}
       {hiddenAgeOverride && (
         <div className="fixed top-4 right-4 z-50">
-          <div className={`w-1.5 h-1.5 rounded-full shadow-lg ${
-            hiddenAgeOverride >= 10 && hiddenAgeOverride <= 29 
-              ? 'bg-green-500' 
-              : 'bg-blue-500'
-          }`} title={
-            hiddenAgeOverride >= 10 && hiddenAgeOverride <= 29 
-              ? 'Range 1: Age 10-29 (139-155/78-93)' 
-              : 'Range 2: Age 30+ (120-142/72-88)'
-          }></div>
+          <div className={`w-1.5 h-1.5 rounded-full shadow-lg ${hiddenAgeOverride >= 10 && hiddenAgeOverride <= 29
+            ? 'bg-green-500'
+            : 'bg-blue-500'
+            }`} title={
+              hiddenAgeOverride >= 10 && hiddenAgeOverride <= 29
+                ? 'Range 1: Age 10-29 (139-155/78-93)'
+                : 'Range 2: Age 30+ (120-142/72-88)'
+            }></div>
         </div>
       )}
       <div className="container mx-auto">
@@ -555,59 +540,59 @@ const MonitoringPage: React.FC = () => {
             <VitalSignCard icon={<SpO2Icon />} label="SpO2" value={vitals.spo2 > 0 ? vitals.spo2.toFixed(1) : '--'} unit="%" colorClass="border-pink-500/50" />
             <VitalSignCard icon={<TemperatureIcon />} label="Temperature" value={vitals.temperature !== undefined && vitals.temperature !== null ? `${vitals.temperature.toFixed(1)}°F` : '--'} unit="" colorClass="border-purple-500/50" />
           </div>
-          
-          
+
+
           <div className="space-y-4">
-              {/* ECG Lead I - Standard Limb Lead */}
-              <div ref={ecgChartRef1} className="h-48 flex flex-col p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border-2 border-green-500/30 shadow-lg">
-                  <div className="flex items-center justify-between text-gray-300 mb-2">
-                      <div className="flex items-center">
-                          <EcgIcon />
-                          <h3 className="font-semibold text-lg ml-2">ECG Lead I</h3>
-                          <span className="ml-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Standard</span>
-                      </div>
-                  </div>
-                  <div className="flex-grow relative">
-                     <EcgChart data={ecgData1} strokeColor="#10B981" leadType="Standard" />
-                     <div className="absolute top-2 right-2 text-xs text-green-400 bg-gray-900/80 px-2 py-1 rounded">
-                         P-QRS-T Complex
-                     </div>
-                  </div>
+            {/* ECG Lead I - Standard Limb Lead */}
+            <div ref={ecgChartRef1} className="h-48 flex flex-col p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border-2 border-green-500/30 shadow-lg">
+              <div className="flex items-center justify-between text-gray-300 mb-2">
+                <div className="flex items-center">
+                  <EcgIcon />
+                  <h3 className="font-semibold text-lg ml-2">ECG Lead I</h3>
+                  <span className="ml-3 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">Standard</span>
+                </div>
               </div>
+              <div className="flex-grow relative">
+                <EcgChart data={ecgData1} strokeColor="#10B981" leadType="Standard" />
+                <div className="absolute top-2 right-2 text-xs text-green-400 bg-gray-900/80 px-2 py-1 rounded">
+                  P-QRS-T Complex
+                </div>
+              </div>
+            </div>
 
-              {/* ECG Lead II - Long Axis Lead */}
-              <div ref={ecgChartRef2} className="h-48 flex flex-col p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border-2 border-amber-500/30 shadow-lg">
-                  <div className="flex items-center justify-between text-gray-300 mb-2">
-                      <div className="flex items-center">
-                          <EcgIcon />
-                          <h3 className="font-semibold text-lg ml-2">ECG Lead II</h3>
-                          <span className="ml-3 px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded-full">Long Axis</span>
-                      </div>
-                  </div>
-                  <div className="flex-grow relative">
-                     <EcgChart data={ecgData2} strokeColor="#F59E0B" leadType="Long Axis" />
-                     <div className="absolute top-2 right-2 text-xs text-amber-400 bg-gray-900/80 px-2 py-1 rounded">
-                         Enhanced R-wave
-                     </div>
-                  </div>
+            {/* ECG Lead II - Long Axis Lead */}
+            <div ref={ecgChartRef2} className="h-48 flex flex-col p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border-2 border-amber-500/30 shadow-lg">
+              <div className="flex items-center justify-between text-gray-300 mb-2">
+                <div className="flex items-center">
+                  <EcgIcon />
+                  <h3 className="font-semibold text-lg ml-2">ECG Lead II</h3>
+                  <span className="ml-3 px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded-full">Long Axis</span>
+                </div>
               </div>
+              <div className="flex-grow relative">
+                <EcgChart data={ecgData2} strokeColor="#F59E0B" leadType="Long Axis" />
+                <div className="absolute top-2 right-2 text-xs text-amber-400 bg-gray-900/80 px-2 py-1 rounded">
+                  Enhanced R-wave
+                </div>
+              </div>
+            </div>
 
-              {/* ECG Lead III - Inferior Lead */}
-              <div ref={ecgChartRef3} className="h-48 flex flex-col p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border-2 border-blue-500/30 shadow-lg">
-                  <div className="flex items-center justify-between text-gray-300 mb-2">
-                      <div className="flex items-center">
-                          <EcgIcon />
-                          <h3 className="font-semibold text-lg ml-2">ECG Lead III</h3>
-                          <span className="ml-3 px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">Inferior</span>
-                      </div>
-                  </div>
-                  <div className="flex-grow relative">
-                     <EcgChart data={ecgData3} strokeColor="#3B82F6" leadType="Inferior" />
-                     <div className="absolute top-2 right-2 text-xs text-blue-400 bg-gray-900/80 px-2 py-1 rounded">
-                         Inverted T-wave
-                     </div>
-                  </div>
+            {/* ECG Lead III - Inferior Lead */}
+            <div ref={ecgChartRef3} className="h-48 flex flex-col p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border-2 border-blue-500/30 shadow-lg">
+              <div className="flex items-center justify-between text-gray-300 mb-2">
+                <div className="flex items-center">
+                  <EcgIcon />
+                  <h3 className="font-semibold text-lg ml-2">ECG Lead III</h3>
+                  <span className="ml-3 px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">Inferior</span>
+                </div>
               </div>
+              <div className="flex-grow relative">
+                <EcgChart data={ecgData3} strokeColor="#3B82F6" leadType="Inferior" />
+                <div className="absolute top-2 right-2 text-xs text-blue-400 bg-gray-900/80 px-2 py-1 rounded">
+                  Inverted T-wave
+                </div>
+              </div>
+            </div>
           </div>
         </main>
       </div>

@@ -53,15 +53,15 @@ projecsoviet/
 │   ├── code/
 │   └── ...
 ├── mesh-messenger/
-    ├── main.go
-    ├── node/
-    │   ├── node.go
-    │   └── peer.go
-    ├── message/
-    │   └── message.go
-    └── network/
-    ├── discovery.go
-   └── transport.go
+│   ├── main.go
+│   ├── node/
+│   │   ├── node.go
+│   │   └── peer.go
+│   ├── message/
+│   │   └── message.go
+│   └── network/
+│       ├── discovery.go
+│       └── transport.go
 ├── services/
 │   ├── firebase.ts
 │   ├── geminiService.ts
@@ -133,17 +133,17 @@ projecsoviet/
 
 ### ECG Model Setup
 
-1.  **Navigate to the `HuBERT-ECG` directory**:
+1.  **Navigate to the `ECG` directory**:
     ```bash
-    cd projecsoviet/HECG
+    cd projecsoviet/ECG
     ```
 2.  **Create a Python virtual environment**:
     ```bash
-    python -m venv hubert_ecg_env
+    python -m venv ecg_env
     ```
 3.  **Activate the virtual environment**:
     *   **Windows**: `ecg_env\Scripts\activate`
-    *   **macOS/Linux**: `source hubert_ecg_env/bin/activate`
+    *   **macOS/Linux**: `source ecg_env/bin/activate`
 4.  **Install the required Python packages**:
     ```bash
     pip install -r requirements.txt
