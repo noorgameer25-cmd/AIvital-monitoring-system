@@ -112,4 +112,4 @@ def predict():
 
 if __name__ == '__main__':
     print("Starting Python backend for HuBERT-ECG...")
-    app.run(host='0.0.0.0', port=5001, debug=True) # Running on a different port than the Node.js backend
+    app.run(port=5001, debug=True) # Running on a different port than the Node.js backend
