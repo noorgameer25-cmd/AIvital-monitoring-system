@@ -20,7 +20,7 @@ import { toPng } from 'html-to-image';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import type { VitalSigns, EcgDataPoint, VitalAnalysis } from './types';
-import { VITAL_RANGES, getBloodPressureRanges, ECG_PATTERN_1, ECG_PATTERN_2, ECG_PATTERN_3, ECG_DATA_LENGTH, MONITORING_DURATION_MS, PVC_PATTERN_1, PVC_PATTERN_2, PVC_PATTERN_3 } from './constants';
+import { getBloodPressureRanges, ECG_DATA_LENGTH, MONITORING_DURATION_MS } from './constants';
 import ttsService, { HINDI_MESSAGES } from './services/ttsService';
 import VitalSignCard from './components/VitalSignCard';
 import EcgChart from './components/EcgChart';
@@ -97,132 +97,16 @@ const MonitoringPage: React.FC = () => {
   const [analysisReport, setAnalysisReport] = useState<VitalAnalysis | null>(null);
   const [ecgImages, setEcgImages] = useState<(string | null)[]>([]);
 
-  const intervalRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
-  const ecgPatternIndexRef = useRef(0);
-  const arrhythmiaStateRef = useRef({ type: 'none', index: 0 });
   const finalVitalsRef = useRef<VitalSigns>(vitals);
   const ecgChartRef1 = useRef<HTMLDivElement>(null);
   const ecgChartRef2 = useRef<HTMLDivElement>(null);
   const ecgChartRef3 = useRef<HTMLDivElement>(null);
-  const beatVariationRef = useRef({ amplitude: 1, beatLength: ECG_PATTERN_1.length });
 
-  /**
-   * STANDARD VITAL SIGN GENERATOR
-   * 
-   * Generates realistic vital sign variations for most vitals (Heart Rate, Blood Pressure, Blood Sugar)
-   * - If starting from 0: generates a random value within normal range
-   * - If already running: makes small random changes within the normal range
-   * - Ensures values stay within medically acceptable limits
-   */
-  const getRandomVital = (min: number, max: number, current: number, maxChange: number) => {
-    if (current === 0) return Math.floor(Math.random() * (max - min + 1)) + min;
-    const change = (Math.random() - 0.5) * maxChange;
-    return Math.max(min, Math.min(max, Math.round(current + change)));
-  };
+  // NOTE: Random vital sign simulation removed. Vitals are now entirely driven
+  // by the incoming data read from the Web Serial port in `readLoop`.
 
-  // Specialized function for blood pressure that ensures strict range compliance
-  const getBloodPressureVital = (min: number, max: number, current: number, maxChange: number) => {
-    if (current === 0) {
-      // Generate initial value within the full range
-      const initialValue = Math.floor(Math.random() * (max - min + 1)) + min;
-      console.log(`🔧 BP Initial: min=${min}, max=${max}, generated=${initialValue}`);
-      return initialValue;
-    }
-    const change = (Math.random() - 0.5) * maxChange;
-    const newValue = Math.round(current + change);
-    const clampedValue = Math.max(min, Math.min(max, newValue));
-    console.log(`🔧 BP Update: current=${current}, change=${change}, new=${newValue}, clamped=${clampedValue}`);
-    return clampedValue;
-  };
-
-  const getSlowRisingVital = (min: number, max: number, current: number, maxChange: number) => {
-    if (current === 0) {
-      // Start from 0 and begin rising
-      return Math.random() * maxChange * 2; // Start with a small positive value
-    }
-
-    // If we're still below the minimum, gradually rise
-    if (current < min) {
-      const riseAmount = Math.random() * maxChange * 3; // Faster rise when below target
-      const newValue = current + riseAmount;
-      return Math.min(newValue, min);
-    }
-
-    // Once in range, vary slowly within the target range
-    const change = (Math.random() - 0.5) * maxChange;
-    const newValue = current + change;
-    return Math.max(min, Math.min(max, newValue));
-  };
-
-  /**
-   * SPO2 (OXYGEN SATURATION) GENERATOR
-   * 
-   * Simulates pulse oximeter behavior:
-   * - Starts immediately at 98% (realistic for healthy adults)
-   * - HIGHLY VARIABLE within 98-100% range (increasing/decreasing frequently)
-   * - Represents oxygen saturation in blood with realistic fluctuations
-   * - 8x more variable than other vitals for dynamic monitoring
-   */
-  const getSpo2Vital = (min: number, max: number, current: number, maxChange: number) => {
-    if (current === 0) {
-      // Start at 98% for SpO2
-      return 98;
-    }
-
-    // HIGHLY VARIABLE SpO2 within 98-100% range
-    // Create more dramatic changes with higher maxChange multiplier
-    const change = (Math.random() - 0.5) * maxChange * 8; // 8x more variable
-    const newValue = current + change;
-
-    // Ensure it stays within 98-100% range but with more fluctuation
-    return Math.max(min, Math.min(max, newValue));
-  };
-
-  /**
-   * TEMPERATURE GENERATOR
-   * 
-   * Simulates realistic thermometer behavior with 4 phases:
-   * 1. Start at 0°F (sensor initialization)
-   * 2. Jump to 90-95°F (sensor warm-up phase)
-   * 3. Rise to 98°F (calibration phase)
-   * 4. Randomize in 97.8-99°F range (normal body temperature)
-   * 
-   * This mimics how real medical thermometers work
-   */
-  const getTemperatureVital = (min: number, max: number, current: number, maxChange: number) => {
-    if (current === 0) {
-      // Start from 0, but begin the progression
-      return 0.1; // Start with a tiny value to begin progression
-    }
-
-    // If still very low, make a jump to around 90
-    if (current < 10) {
-      return 90 + Math.random() * 5; // Jump to 90-95 range
-    }
-
-    // If below 98, rise to 98
-    if (current < 98) {
-      const riseAmount = Math.random() * maxChange * 5; // Faster rise
-      const newValue = current + riseAmount;
-      return Math.min(newValue, 98);
-    }
-
-    // Once at 98+, randomize in the final range (97.8-99)
-    const change = (Math.random() - 0.5) * maxChange;
-    const newValue = current + change;
-    return Math.max(min, Math.min(max, newValue));
-  };
-
-  /**
-   * ECG DATA UPDATER
-   * 
-   * Manages ECG waveform data for real-time display:
-   * - Adds new data points with timestamp
-   * - Maintains fixed data length (sliding window)
-   * - Removes old data points to keep memory usage low
-   * - Used for all 3 ECG leads (I, II, III)
-   */
+  // useEffect was moved below stopMonitoring definition to satisfy React hooks rule of declaration order.
   const updateEcgData = (setter: React.Dispatch<React.SetStateAction<EcgDataPoint[]>>, value: number) => {
     setter(currentData => {
       const newData = [...currentData];
@@ -233,105 +117,6 @@ const MonitoringPage: React.FC = () => {
       return newData;
     });
   };
-
-  /**
-   * MAIN VITAL SIGNS UPDATE FUNCTION
-   * 
-   * This is the core function that runs every 500ms during monitoring:
-   * 1. Updates all vital signs using appropriate generators
-   * 2. Manages ECG waveform generation with realistic patterns
-   * 3. Handles arrhythmia simulation (PVC - Premature Ventricular Contractions)
-   * 4. Applies natural variations to ECG waveforms
-   * 
-   * ECG Logic:
-   * - Normal sinus rhythm with variations
-   * - 10% chance of PVC (arrhythmia) events
-   * - Each lead has different characteristics (Lead I, II, III)
-   * - Realistic P-QRS-T complex patterns
-   */
-  const updateVitals = useCallback(() => {
-    setVitals(prev => {
-      // Get age-based blood pressure ranges (use hidden override if set)
-      const age = hiddenAgeOverride || 30; // Use override first, then default to 30
-      const bpRanges = getBloodPressureRanges(age);
-
-      // Debug logging for blood pressure ranges
-      if (hiddenAgeOverride) {
-        console.log(`🔧 BP Debug - Age: ${age}, Systolic: ${bpRanges.systolic.min}-${bpRanges.systolic.max}, Diastolic: ${bpRanges.diastolic.min}-${bpRanges.diastolic.max}`);
-        console.log(`🔧 Current BP: ${prev.bloodPressure.systolic}/${prev.bloodPressure.diastolic}`);
-        console.log(`🔧 BP Starting from 0? Systolic: ${prev.bloodPressure.systolic === 0}, Diastolic: ${prev.bloodPressure.diastolic === 0}`);
-      }
-
-      const newVitals = {
-        heartRate: getRandomVital(VITAL_RANGES.heartRate.min, VITAL_RANGES.heartRate.max, prev.heartRate, 2),
-        bloodPressure: {
-          systolic: getBloodPressureVital(bpRanges.systolic.min, bpRanges.systolic.max, prev.bloodPressure.systolic, 3),
-          diastolic: getBloodPressureVital(bpRanges.diastolic.min, bpRanges.diastolic.max, prev.bloodPressure.diastolic, 2),
-        },
-        bloodSugar: getRandomVital(VITAL_RANGES.bloodSugar.min, VITAL_RANGES.bloodSugar.max, prev.bloodSugar, 4),
-        spo2: getSpo2Vital(VITAL_RANGES.spo2.min, VITAL_RANGES.spo2.max, prev.spo2, 0.5),
-        temperature: getTemperatureVital(VITAL_RANGES.temperature.min, VITAL_RANGES.temperature.max, prev.temperature, 0.1),
-      };
-      finalVitalsRef.current = newVitals;
-      return newVitals;
-    });
-
-    // --- ECG Update Logic with Arrhythmia and Variations ---
-    const isNewBeatStart = ecgPatternIndexRef.current === 0;
-
-    // At the start of a new normal beat, decide if we should trigger a PVC or set variations
-    if (isNewBeatStart && arrhythmiaStateRef.current.type === 'none') {
-      if (Math.random() < 0.1) { // ~10% chance of a PVC
-        arrhythmiaStateRef.current = { type: 'pvc', index: 0 };
-      } else {
-        // It's a normal beat, so let's set its unique characteristics
-        beatVariationRef.current = {
-          amplitude: 1 + (Math.random() - 0.5) * 0.1, // +/- 5% amplitude
-          beatLength: ECG_PATTERN_1.length + Math.floor(Math.random() * 3) // Add 0, 1, or 2 extra pause ticks
-        };
-      }
-    }
-
-    if (arrhythmiaStateRef.current.type === 'pvc') {
-      const pvcIndex = arrhythmiaStateRef.current.index;
-      updateEcgData(setEcgData1, PVC_PATTERN_1[pvcIndex]);
-      updateEcgData(setEcgData2, PVC_PATTERN_2[pvcIndex]);
-      updateEcgData(setEcgData3, PVC_PATTERN_3[pvcIndex]);
-
-      const newIndex = pvcIndex + 1;
-      if (newIndex >= PVC_PATTERN_1.length) {
-        // PVC cycle is over, return to normal rhythm
-        arrhythmiaStateRef.current = { type: 'none', index: 0 };
-        ecgPatternIndexRef.current = 0; // Start a fresh normal beat
-      } else {
-        arrhythmiaStateRef.current.index = newIndex;
-      }
-    } else {
-      // Normal sinus rhythm with variations
-      const normalIndex = ecgPatternIndexRef.current;
-      const { amplitude, beatLength } = beatVariationRef.current;
-
-      // If the current index is beyond the base pattern length, it's a pause tick
-      if (normalIndex >= ECG_PATTERN_1.length) {
-        updateEcgData(setEcgData1, 50);
-        updateEcgData(setEcgData2, 50);
-        updateEcgData(setEcgData3, 50);
-      } else {
-        // Apply amplitude variation to the current point in the PQRST wave
-        const applyVariation = (val: number) => (val - 50) * amplitude + 50;
-        updateEcgData(setEcgData1, applyVariation(ECG_PATTERN_1[normalIndex]));
-        updateEcgData(setEcgData2, applyVariation(ECG_PATTERN_2[normalIndex]));
-        updateEcgData(setEcgData3, applyVariation(ECG_PATTERN_3[normalIndex]));
-      }
-
-      // Move to the next point in the beat cycle
-      if (beatLength > 0) {
-        ecgPatternIndexRef.current = (normalIndex + 1) % beatLength;
-      } else {
-        ecgPatternIndexRef.current = (normalIndex + 1) % ECG_PATTERN_1.length;
-      }
-    }
-  }, []);
 
   const getHubertEcgAnalysis = async (ecgData: EcgDataPoint[], heartRate: number) => {
     // The model expects a 1D array of numbers for the signal
@@ -364,9 +149,7 @@ const MonitoringPage: React.FC = () => {
   };
 
   const stopMonitoring = useCallback(async () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    intervalRef.current = null;
     timeoutRef.current = null;
 
     if (appState !== 'MONITORING') return;
@@ -442,18 +225,13 @@ const MonitoringPage: React.FC = () => {
 
   useEffect(() => {
     if (appState === 'MONITORING') {
-      // Only run the simulation interval if NO serial device is connected
-      if (!isSerialConnected) {
-        intervalRef.current = window.setInterval(updateVitals, 500);
-      }
       timeoutRef.current = window.setTimeout(stopMonitoring, MONITORING_DURATION_MS);
     }
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [appState, stopMonitoring, updateVitals, isSerialConnected]);
+  }, [appState, stopMonitoring, isSerialConnected]);
 
   // Handle Serial Connection
   const connectSerial = async () => {
@@ -551,8 +329,6 @@ const MonitoringPage: React.FC = () => {
     setEcgData1(initialEcg);
     setEcgData2(initialEcg);
     setEcgData3(initialEcg);
-    ecgPatternIndexRef.current = 0;
-    arrhythmiaStateRef.current = { type: 'none', index: 0 };
     setAppState('MONITORING');
   };
 
@@ -584,8 +360,12 @@ const MonitoringPage: React.FC = () => {
                 Hardware Connected
               </button>
             )}
-            <button onClick={handleStart} className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg shadow-md transition-colors">
-              Start Monitoring
+            <button
+              onClick={handleStart}
+              disabled={!isSerialConnected}
+              className={`px-6 py-2 font-semibold rounded-lg shadow-md transition-colors ${isSerialConnected ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-600'
+                }`}>
+              {isSerialConnected ? 'Start Monitoring' : 'Device Required'}
             </button>
           </div>
         );
